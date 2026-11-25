@@ -48,8 +48,8 @@ for navn, hex in Map("Grøn", "00D68F", "Cyan", "00C8E6", "Blå", "5B8CFF", "Rø
 global FarveNavne := ["Grøn", "Cyan", "Blå", "Rød", "Lilla", "Orange", "Gul", "Hvid", "Regnbue"]
 
 ; ---------------------------- INDSTILLINGER --------------------------
-IS(sek, k, std) => IniRead(INI, sek, k, std)
-II(sek, k, std) {
+LaesS(sek, k, std) => IniRead(INI, sek, k, std)
+LaesI(sek, k, std) {
     try return Integer(IniRead(INI, sek, k, std))
     return std
 }
@@ -62,18 +62,18 @@ IListe(v, liste, std) {
 }
 
 global S := {}
-S.Tema        := IListe(IS("Generelt", "Tema", II("Generelt", "Moerk", 1) ? "Mørkt" : "Lyst"), ["Mørkt", "Lyst"], "Mørkt")
-S.GuiFont     := IListe(IS("Generelt", "GuiFont", "Segoe UI"), Fonte, "Segoe UI")
-S.Arraylist   := II("Generelt", "Arraylist", 1) ? 1 : 0
-S.ALFont      := IListe(IS("Generelt", "ALFont", "Segoe UI"), Fonte, "Segoe UI")
-S.ALSize      := Klem(II("Generelt", "ALSize", 12), 8, 28)
-S.ALFed       := II("Generelt", "ALFed", 1) ? 1 : 0
-S.FarveAktiv  := IListe(IS("Generelt", "FarveAktiv", "Grøn"), FarveNavne, "Grøn")
-S.FarveVent   := IListe(IS("Generelt", "FarveVent", "Hvid"), FarveNavne, "Hvid")
-S.KunVindue   := II("Generelt", "KunVindue", 0) ? 1 : 0
-S.VinduesExe  := IS("Generelt", "VinduesExe", "")
-S.Pinned      := II("Generelt", "Pinned", 1) ? 1 : 0
-S.AktivConfig := IS("Generelt", "AktivConfig", "")
+S.Tema        := IListe(LaesS("Generelt", "Tema", LaesI("Generelt", "Moerk", 1) ? "Mørkt" : "Lyst"), ["Mørkt", "Lyst"], "Mørkt")
+S.GuiFont     := IListe(LaesS("Generelt", "GuiFont", "Segoe UI"), Fonte, "Segoe UI")
+S.Arraylist   := LaesI("Generelt", "Arraylist", 1) ? 1 : 0
+S.ALFont      := IListe(LaesS("Generelt", "ALFont", "Segoe UI"), Fonte, "Segoe UI")
+S.ALSize      := Klem(LaesI("Generelt", "ALSize", 12), 8, 28)
+S.ALFed       := LaesI("Generelt", "ALFed", 1) ? 1 : 0
+S.FarveAktiv  := IListe(LaesS("Generelt", "FarveAktiv", "Grøn"), FarveNavne, "Grøn")
+S.FarveVent   := IListe(LaesS("Generelt", "FarveVent", "Hvid"), FarveNavne, "Hvid")
+S.KunVindue   := LaesI("Generelt", "KunVindue", 0) ? 1 : 0
+S.VinduesExe  := LaesS("Generelt", "VinduesExe", "")
+S.Pinned      := LaesI("Generelt", "Pinned", 1) ? 1 : 0
+S.AktivConfig := LaesS("Generelt", "AktivConfig", "")
 
 ; Farvetema
 global T := {}
@@ -111,14 +111,14 @@ class Clicker {
     __New(navn, knap, send, stdKey, stdFade) {
         s := navn
         this.navn := navn, this.knap := knap, this.send := send
-        this.key     := IS(s, "Key", stdKey)
-        this.enabled := II(s, "Aktiv", 0) ? 1 : 0
-        this.cps     := Klem(II(s, "CPS", 12), 1, 50)
-        this.mode    := IListe(IS(s, "Mode", "Hold"), Modes, "Hold")
-        this.pattern := IListe(IS(s, "Pattern", "Konstant"), Moenstre, "Konstant")
-        this.rnd     := Klem(II(s, "Tilfaeldighed", 30), 0, 100)
-        this.delay   := Klem(II(s, "Delay", 100), 0, 500)
-        this.fade    := Klem(II(s, "Exhaustion", stdFade), 0, 2000)
+        this.key     := LaesS(s, "Key", stdKey)
+        this.enabled := LaesI(s, "Aktiv", 0) ? 1 : 0
+        this.cps     := Klem(LaesI(s, "CPS", 12), 1, 50)
+        this.mode    := IListe(LaesS(s, "Mode", "Hold"), Modes, "Hold")
+        this.pattern := IListe(LaesS(s, "Pattern", "Konstant"), Moenstre, "Konstant")
+        this.rnd     := Klem(LaesI(s, "Tilfaeldighed", 30), 0, 100)
+        this.delay   := Klem(LaesI(s, "Delay", 100), 0, 500)
+        this.fade    := Klem(LaesI(s, "Exhaustion", stdFade), 0, 2000)
         ; køretidsdata
         this.running := false, this.fadeStart := 0, this.next := 0, this.startT := 0
         this.ned := false, this.opAt := 0, this.count := 0, this.runClicks := 0
@@ -187,8 +187,8 @@ global stCfg := Side.AddText("x20 y+4 w130 c" T.muted, "")
 Side.AddText("x20 y" (WH - 34) " w130 c" T.muted, "F9 = luk · v" VERSION)
 
 ; ---------- Hjælpefunktioner til layout ----------
-Titel(t, sub) {
-    h := MainGui.AddText("x" X " y20 w" CW, t)
+Titel(tekst, sub) {
+    h := MainGui.AddText("x" X " y20 w" CW, tekst)
     h.SetFont("s15 bold")
     MainGui.AddText("x" X " y+2 w" CW " c" T.muted, sub)
 }
@@ -212,7 +212,7 @@ NyDDL(liste, valgt, opts := "") {
         d.Choose(1)
     return d
 }
-Hint(t, opts := "") => MainGui.AddText("x" X " y+4 w" CW " c" T.muted " " opts, t)
+Hint(tekst, opts := "") => MainGui.AddText("x" X " y+4 w" CW " c" T.muted " " opts, tekst)
 FladKnap(opts, tekst, fn, primaer := false) {
     k := MainGui.AddText(opts " Center +0x200 Background" (primaer ? T.accent " cFFFFFF" : T.ctrl), tekst)
     k.OnEvent("Click", fn)
@@ -364,8 +364,8 @@ KeyRaekke(id, label, std, fn, foerste := false) {
 }
 for c in Clickers
     KeyRaekke(c.navn, c.navn " klik til/fra", c.key, SkiftKlikker.Bind(c), c.navn = "Venstre")
-KeyRaekke("gui", "Vis / skjul vindue", IS("Generelt", "GuiKey", "Insert"), VisSkjul)
-KeyRaekke("panik", "Panik – stop alt", IS("Generelt", "PanikKey", "F8"), Panik)
+KeyRaekke("gui", "Vis / skjul vindue", LaesS("Generelt", "GuiKey", "Insert"), VisSkjul)
+KeyRaekke("panik", "Panik – stop alt", LaesS("Generelt", "PanikKey", "F8"), Panik)
 MainGui.AddText("x" X " y+10 w" (CW - 150) " h30 +0x200", "Luk programmet")
 MainGui.AddText("x" (X + CW - 140) " yp w140 h30 Center +0x200 c" T.muted, "F9 (fast)")
 Hint("`nMus 4, Mus 5 og midterknappen virker også.`nEsc = annuller · Backspace = fjern tasten.", "y+14 r3")
@@ -411,7 +411,7 @@ TemaFinish() {
     WinRedraw(MainGui)
 }
 GendanPosition() {
-    x := II("Generelt", "WinX", ""), y := II("Generelt", "WinY", "")
+    x := LaesI("Generelt", "WinX", ""), y := LaesI("Generelt", "WinY", "")
     if x = "" || y = ""
         return
     vx := SysGet(76), vy := SysGet(77), vw := SysGet(78), vh := SysGet(79)
@@ -556,7 +556,7 @@ IndlaesCfg(*) {
         return
     }
     GemPosition()
-    x := IS("Generelt", "WinX", ""), y := IS("Generelt", "WinY", "")
+    x := LaesS("Generelt", "WinX", ""), y := LaesS("Generelt", "WinY", "")
     SpringGem := true
     FileCopy(fil, INI, 1)
     IniWrite(navn, INI, "Generelt", "AktivConfig")
