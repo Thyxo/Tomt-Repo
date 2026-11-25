@@ -20,6 +20,14 @@ global Clickers := [Clicker("Venstre", "LButton", "Left", "F6")
 global GuiKey   := IniRead(INI, "Generelt", "GuiKey", "Insert")
 global VisAL    := Integer(IniRead(INI, "Generelt", "Arraylist", 1))
 global aktivGuiKey := ""
+global KunVindue  := Integer(IniRead(INI, "Generelt", "KunVindue", 0))
+global VinduesExe := IniRead(INI, "Generelt", "VinduesExe", "")
+global Moerk      := Integer(IniRead(INI, "Generelt", "Moerk", 1))
+global FarveAktiv := IniRead(INI, "Generelt", "FarveAktiv", "Grøn")
+global FarveVent  := IniRead(INI, "Generelt", "FarveVent", "Hvid")
+global Farver := Map("Grøn", "00FFAA", "Cyan", "00E5FF", "Rød", "FF4D4D", "Lilla", "B388FF"
+                   , "Orange", "FFA040", "Gul", "FFE14D", "Hvid", "FFFFFF", "Regnbue", "")
+global FarveNavne := ["Grøn", "Cyan", "Rød", "Lilla", "Orange", "Gul", "Hvid", "Regnbue"]
 
 class Clicker {
     __New(navn, knap, send, key) {
@@ -48,7 +56,9 @@ class Clicker {
 ; ---------------------------- HOVED-GUI ------------------------------
 global MainGui := Gui("+AlwaysOnTop", "Autoclicker")
 MainGui.SetFont("s10", "Segoe UI")
-tab := MainGui.AddTab3("w300 h520", ["Venstre", "Højre", "Generelt"])
+if Moerk
+    MainGui.BackColor := "1E1E1E", MainGui.SetFont("cE0E0E0")
+tab := MainGui.AddTab3("w300 h560", ["Venstre", "Højre", "Generelt"])
 for i, c in Clickers {
     tab.UseTab(i)
     BygTab(c)
@@ -61,10 +71,63 @@ cbTop.OnEvent("Click", (ctl, *) => MainGui.Opt((ctl.Value ? "+" : "-") "AlwaysOn
 MainGui.AddText("w270", "Keybind: vis/skjul vindue")
 hkGui := MainGui.AddHotkey("w270", GuiKey)
 hkGui.OnEvent("Change", (ctl, *) => (GuiKey := ctl.Value, RegGuiKey()))
-MainGui.AddText("w270 cGray y+20", "F9 = luk programmet`n`nMønstre:`n• Konstant – helt jævnt`n• Tilfældig – ±30 % variation`n• Butterfly – klik i par (kort/lang)`n• Bølge – CPS svinger op og ned`n`nExhaustion: klik fortsætter og aftager`ngradvist i X ms efter du slipper.")
+; --- Kun i bestemt vindue ---
+MainGui.AddText("w270 y+16", "── Vinduesfilter ──")
+cbVin := MainGui.AddCheckbox("w270 Checked" KunVindue, "Virker kun i dette program:")
+cbVin.OnEvent("Click", (ctl, *) => KunVindue := ctl.Value)
+edVin := MainGui.AddEdit("w270", VinduesExe)
+edVin.OnEvent("Change", (ctl, *) => VinduesExe := Trim(ctl.Value))
+btVin := MainGui.AddButton("w270", "Vælg vindue (klik på det inden 3 sek)")
+btVin.OnEvent("Click", (*) => VaelgVindue())
+
+; --- Tema og farver ---
+MainGui.AddText("w270 y+16", "── Udseende ──")
+cbMoerk := MainGui.AddCheckbox("w270 Checked" Moerk, "Mørkt tema (genstarter)")
+cbMoerk.OnEvent("Click", (ctl, *) => (Moerk := ctl.Value, Reload()))
+MainGui.AddText("w270", "Arraylist-farve når den klikker:")
+ddA := MainGui.AddDropDownList("w270", FarveNavne)
+ddA.Text := FarveAktiv
+ddA.OnEvent("Change", (ctl, *) => FarveAktiv := ctl.Text)
+MainGui.AddText("w270", "Arraylist-farve når den venter:")
+ddV := MainGui.AddDropDownList("w270", FarveNavne)
+ddV.Text := FarveVent
+ddV.OnEvent("Change", (ctl, *) => FarveVent := ctl.Text)
 tab.UseTab()
 MainGui.OnEvent("Close", (*) => ExitApp())
 MainGui.Show()
+if Moerk
+    MoerktTema()
+
+MoerktTema() {
+    DllCall("dwmapi\DwmSetWindowAttribute", "Ptr", MainGui.Hwnd, "Int", 20, "Int*", 1, "Int", 4)
+    for hwnd, ctl in MainGui {
+        switch ctl.Type {
+            case "Checkbox":  DllCall("uxtheme\SetWindowTheme", "Ptr", hwnd, "Str", "", "Str", "")
+            case "Edit":      ctl.Opt("Background2D2D2D"), DllCall("uxtheme\SetWindowTheme", "Ptr", hwnd, "Str", "DarkMode_CFD", "Ptr", 0)
+            case "DDL", "Button": DllCall("uxtheme\SetWindowTheme", "Ptr", hwnd, "Str", ctl.Type = "DDL" ? "DarkMode_CFD" : "DarkMode_Explorer", "Ptr", 0)
+        }
+    }
+    WinRedraw(MainGui)
+}
+
+VaelgVindue() {
+    btVin.Text := "Klik på spillet/programmet nu…"
+    SetTimer(Fang, -3000)
+    Fang() {
+        global VinduesExe, KunVindue
+        try VinduesExe := WinGetProcessName("A")
+        edVin.Value := VinduesExe
+        KunVindue := 1, cbVin.Value := 1
+        btVin.Text := "Valgt: " VinduesExe "  (vælg igen)"
+        MainGui.Show()
+    }
+}
+
+VinduOK() {
+    if !KunVindue || VinduesExe = ""
+        return true
+    return WinActive("ahk_exe " VinduesExe) != 0
+}
 
 BygTab(c) {
     u := c.ui
@@ -129,7 +192,8 @@ OpdaterAL() {
         if i <= linjer.Length {
             c := linjer[i]
             tekst := c.navn "Clicker  " c.cps " CPS  [" c.mode "]"
-            farve := (c.running || c.fadeStart) ? "c00FFAA" : "cFFFFFF"
+            farve := !VinduOK() ? "c707070"
+                   : "c" FarveHex((c.running || c.fadeStart) ? FarveAktiv : FarveVent, i)
             if t.Value != tekst
                 t.Value := tekst
             if !t.HasOwnProp("farve") || t.farve != farve
@@ -140,6 +204,15 @@ OpdaterAL() {
     if !synlig
         AL.Show("NoActivate"), synlig := true
     WinSetAlwaysOnTop(1, AL)
+}
+
+FarveHex(navn, i) {
+    if navn != "Regnbue"
+        return Farver.Has(navn) ? Farver[navn] : "FFFFFF"
+    h := Mod(A_TickCount / 8 + i * 60, 360)
+    x := 1 - Abs(Mod(h / 60, 2) - 1)
+    rgb := [[1,x,0],[x,1,0],[0,1,x],[0,x,1],[x,0,1],[1,0,x]][Floor(h / 60) + 1]
+    return Format("{:02X}{:02X}{:02X}", Round(rgb[1]*255), Round(rgb[2]*255), Round(rgb[3]*255))
 }
 
 ; ---------------------------- KEYBINDS -------------------------------
@@ -175,7 +248,7 @@ F9::ExitApp
 #HotIf
 
 KnapNed(c) {
-    if !c.enabled
+    if !c.enabled || !VinduOK()
         return
     if c.mode = "Hold"
         (!c.running) && Start(c)
@@ -231,6 +304,10 @@ Motor() {
                 c.fadeStart := 0
             if !(c.running || c.fadeStart)
                 continue
+            if !VinduOK() {                     ; skiftet væk fra valgt vindue
+                c.running := false, c.fadeStart := 0
+                continue
+            }
             travl := true
             if t >= c.next {
                 Click(c.send)
@@ -265,5 +342,10 @@ Afslut(*) {
         c.Gem()
     IniWrite(GuiKey, INI, "Generelt", "GuiKey")
     IniWrite(VisAL, INI, "Generelt", "Arraylist")
+    IniWrite(KunVindue, INI, "Generelt", "KunVindue")
+    IniWrite(VinduesExe, INI, "Generelt", "VinduesExe")
+    IniWrite(Moerk, INI, "Generelt", "Moerk")
+    IniWrite(FarveAktiv, INI, "Generelt", "FarveAktiv")
+    IniWrite(FarveVent, INI, "Generelt", "FarveVent")
     DllCall("winmm\timeEndPeriod", "UInt", 1)
 }
